@@ -2,6 +2,7 @@ import pandas as pd
 import re
 import sklearn as sk
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 class Main:
     def __init__(self):
@@ -95,6 +96,19 @@ class Main:
 
         return salary_analysis
 
+    def visualization(self):
+        sns.set_theme()
+        plt.figure(figsize=(10, 6))
+
+        # Sort salaries and plot them
+        # sorted_salaries = sorted(self.model_dataset['processed_salary'])
+        plt.scatter(range(len(self.model_dataset['processed_salary'])), self.model_dataset['processed_salary'], alpha=0.5)
+
+        plt.title('Software Engineer Salaries (Sorted)')
+        plt.xlabel('Rank')
+        plt.ylabel('Salary ($)')
+        plt.show()
+
 
 if __name__ == '__main__':
     main = Main()
@@ -107,5 +121,7 @@ if __name__ == '__main__':
     print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
     print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
     print(f"Total Positions: {analysis['total_positions']}")
+
+    main.visualization()
 
     main.evaluate_model()
