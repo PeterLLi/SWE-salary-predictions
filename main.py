@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import sklearn as sk
+import matplotlib.pyplot as plt
 
 class Main:
     def __init__(self):
