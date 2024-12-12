@@ -1,13 +1,12 @@
 import pandas as pd
 import re
 
-
 class Main:
     def __init__(self):
         self.salary_data = pd.read_csv("software_engineer_salaries.csv")
         self.null_dataset = self.salary_data[self.salary_data.isnull().any(axis=1)]
         self.model_dataset = self.salary_data.dropna().copy()
-        print(len(self.model_dataset))
+        # print(len(self.model_dataset))
 
     def preprocessing(self):
         """Preprocess the salary data by cleaning and transforming salary values."""
