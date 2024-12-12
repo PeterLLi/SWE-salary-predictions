@@ -50,6 +50,37 @@ class Main:
 
         return self.model_dataset
 
+    def split_data(self):
+        print(self.model_dataset.columns)
+        X = (self.model_dataset.drop(columns=['Company Score', 'Date', 'Salary', 'processed_salary']))
+        print(X.columns)
+        y = self.model_dataset['processed_salary']
+        X_train, X_test, y_train, y_test = sk.model_selection.train_test_split(X, y, test_size=0.2, random_state=42)
+        return X_train, X_test, y_train, y_test
+
+    def scale_data(self):
+        train, test, _, _ = self.split_data()
+        scaler = sk.preprocessing.StandardScaler()
+        X_train = scaler.fit_transform(train)
+        X_test = scaler.transform(test)
+        return X_train, X_test
+
+    def regressor_model_predict(self):
+        regressor = sk.linear_model.LinearRegression()
+        X_train, X_test = self.scale_data()
+        _, _, y_train, _ = self.split_data()
+        regressor.fit(X_train, y_train)
+        return regressor.predict(X_test)
+
+    def evaluate_model(self):
+        _, _, _, y_test = self.split_data()
+        y_pred = self.regressor_model_predict()
+        mse_result = sk.metrics.mean_squared_error(y_test, y_pred)
+        r2_result = sk.metrics.r2_score(y_test, y_pred)
+        print('MSE: ', mse_result)
+        print('R2: ', r2_result)
+
+
     def analyze_data(self):
         """Analyze the processed salary data."""
         processed_data = self.preprocessing()
@@ -76,3 +107,5 @@ if __name__ == '__main__':
     print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
     print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
     print(f"Total Positions: {analysis['total_positions']}")
+
+    main.evaluate_model()
