@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 
+
 class Main:
     def __init__(self):
         self.salary_data = pd.read_csv("software_engineer_salaries.csv")
@@ -66,7 +67,15 @@ class Main:
 
         return salary_analysis
 
+
 if __name__ == '__main__':
     main = Main()
     analysis = main.analyze_data()
-    print(analysis)
+
+    # Print each metric on its own line with formatting
+    print("Salary Analysis:")
+    print(f"Average Salary: ${analysis['average_salary']:,.2f}")
+    print(f"Median Salary: ${analysis['median_salary']:,.2f}")
+    print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
+    print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
+    print(f"Total Positions: {analysis['total_positions']}")
