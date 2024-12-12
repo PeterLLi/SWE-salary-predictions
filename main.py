@@ -4,6 +4,7 @@ import sklearn as sk
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 class Main:
     def __init__(self):
         self.salary_data = pd.read_csv("software_engineer_salaries.csv")
