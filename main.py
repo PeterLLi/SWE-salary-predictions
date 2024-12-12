@@ -7,7 +7,6 @@ class Main:
         self.salary_data = pd.read_csv("software_engineer_salaries.csv")
         self.null_dataset = self.salary_data[self.salary_data.isnull().any(axis=1)]
         self.model_dataset = self.salary_data.dropna().copy()
-        # print(len(self.model_dataset))
 
     def preprocessing(self):
         """Preprocess the salary data by cleaning and transforming salary values."""
@@ -23,7 +22,7 @@ class Main:
                        .replace('(Employer est.)', '').replace('(Glassdoor est.)', '')
                        .strip())
 
-            # Check if hourly rate
+            # Check if hourly rate - is a boolean
             is_hourly = 'Per Hour' in cleaned
 
             # Extract numbers using regex
@@ -48,17 +47,14 @@ class Main:
         # Remove rows where salary processing failed
         self.model_dataset = self.model_dataset.dropna(subset=['processed_salary'])
 
-        # Calculate average salary
-        avg_salary = self.model_dataset['processed_salary'].mean()
-
-        return self.model_dataset, avg_salary
+        return self.model_dataset
 
     def analyze_data(self):
         """Analyze the processed salary data."""
-        processed_data, average_salary = self.preprocessing()
+        processed_data = self.preprocessing()
 
         salary_analysis = {
-            'average_salary': average_salary,
+            'average_salary': processed_data['processed_salary'].mean(),
             'median_salary': processed_data['processed_salary'].median(),
             'min_salary': processed_data['processed_salary'].min(),
             'max_salary': processed_data['processed_salary'].max(),
