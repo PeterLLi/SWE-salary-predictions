@@ -59,6 +59,8 @@ class Main:
         self.model_dataset = self.model_dataset.dropna(subset=['processed_salary'])
         self.model_dataset = self.model_dataset.drop(columns=['Salary'])
 
+        scaler = sk.preprocessing.StandardScaler()
+        self.model_dataset['processed_salary'] = scaler.fit_transform(self.model_dataset[['processed_salary']])
         return self.model_dataset
 
     def data_embedding(self):
