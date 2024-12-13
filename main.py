@@ -14,6 +14,8 @@ class Main:
     def preprocessing(self):
         """Preprocess the salary data by cleaning and transforming salary values."""
         processed_salaries = []
+        self.model_dataset = self.model_dataset.drop(columns=['Company Review'])
+        self.model_dataset = self.model_dataset.drop(columns=['Date'])
 
         for salary in self.model_dataset['Salary']:
             if pd.isna(salary):
@@ -49,6 +51,7 @@ class Main:
 
         # Remove rows where salary processing failed
         self.model_dataset = self.model_dataset.dropna(subset=['processed_salary'])
+        self.model_dataset = self.model_dataset.drop(columns=['Salary'])
 
         return self.model_dataset
 
