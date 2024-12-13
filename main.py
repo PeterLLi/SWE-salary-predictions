@@ -154,5 +154,6 @@ if __name__ == '__main__':
 
     # main.visualization()
 
+    main.preprocessing()
     X, y = main.data_embedding()
     model = main.train_model(X, y)
