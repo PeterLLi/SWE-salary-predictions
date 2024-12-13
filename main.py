@@ -21,6 +21,7 @@ class Main:
         """Preprocess the salary data by cleaning and transforming salary values."""
         processed_salaries = []
         self.model_dataset = self.model_dataset.drop(columns=['Company Score'])
+        self.model_dataset = self.model_dataset.drop(columns=['Company'])
         self.model_dataset = self.model_dataset.drop(columns=['Date'])
 
         for salary in self.model_dataset['Salary']:
@@ -59,21 +60,21 @@ class Main:
         self.model_dataset = self.model_dataset.dropna(subset=['processed_salary'])
         self.model_dataset = self.model_dataset.drop(columns=['Salary'])
 
-        # scaler = sk.preprocessing.StandardScaler()
-        # self.model_dataset['processed_salary'] = scaler.fit_transform(self.model_dataset[['processed_salary']])
+        scaler = sk.preprocessing.StandardScaler()
+        self.model_dataset['processed_salary'] = scaler.fit_transform(self.model_dataset[['processed_salary']])
         return self.model_dataset
 
     def data_embedding(self):
         """Generate embeddings for company name, location, and job title."""
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
 
         # Generate embeddings for each column
-        company_embeddings = model.encode(self.model_dataset['Company'].tolist())
-        location_embeddings = model.encode(self.model_dataset['Location'].tolist())
-        job_title_embeddings = model.encode(self.model_dataset['Job Title'].tolist())
+        # company_embeddings = transformer_model.encode(self.model_dataset['Company'].tolist())
+        location_embeddings = transformer_model.encode(self.model_dataset['Location'].tolist())
+        job_title_embeddings = transformer_model.encode(self.model_dataset['Job Title'].tolist())
 
         # Combine embeddings into a single feature vector for each row
-        X = np.hstack([company_embeddings, location_embeddings, job_title_embeddings])
+        X = np.hstack([location_embeddings, job_title_embeddings])
 
         # Get the processed salaries as the target variable
         y = self.model_dataset['processed_salary'].values
