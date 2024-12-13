@@ -3,12 +3,11 @@ import pandas as pd
 import re
 import sklearn as sk
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
-import torch
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 
 
 class Main:
@@ -82,20 +81,23 @@ class Main:
         return X, y
 
     def train_model(self, X, y):
-        """Train a linear regression model using the embeddings as features."""
-        # Split the data into training and test sets
+        """Train a gradient boosting model using XGBoost."""
+        # Split data
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Initialize and train the linear regression model
-        model = LinearRegression()
+        # Initialize and train model
+        model = XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, min_child_weight=3, random_state=42)
         model.fit(X_train, y_train)
 
-        # Make predictions on the test set
+        # Make predictions
         y_pred = model.predict(X_test)
 
-        # Calculate Mean Squared Error (MSE)
+        # Calculate metrics
         mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+
         print(f"Mean Squared Error: {mse:.2f}")
+        print(f"R² Score: {r2:.3f}")
 
         return model, y_test, y_pred
 
