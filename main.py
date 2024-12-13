@@ -14,8 +14,8 @@ class Main:
     def preprocessing(self):
         """Preprocess the salary data by cleaning and transforming salary values."""
         processed_salaries = []
-        self.model_dataset = self.model_dataset.drop(columns=['Company Review'])
-        self.model_dataset = self.model_dataset.drop(columns=['Date'])
+        self.model_dataset = self.model_dataset.drop(columns=['Company Score'])
+        self.model_dataset = self.model_dataset.drop(columns=['Date'], axis=1)
 
         for salary in self.model_dataset['Salary']:
             if pd.isna(salary):
