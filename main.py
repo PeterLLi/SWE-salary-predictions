@@ -59,8 +59,8 @@ class Main:
         self.model_dataset = self.model_dataset.dropna(subset=['processed_salary'])
         self.model_dataset = self.model_dataset.drop(columns=['Salary'])
 
-        scaler = sk.preprocessing.StandardScaler()
-        self.model_dataset['processed_salary'] = scaler.fit_transform(self.model_dataset[['processed_salary']])
+        # scaler = sk.preprocessing.StandardScaler()
+        # self.model_dataset['processed_salary'] = scaler.fit_transform(self.model_dataset[['processed_salary']])
         return self.model_dataset
 
     def data_embedding(self):
@@ -96,7 +96,7 @@ class Main:
         mse = mean_squared_error(y_test, y_pred)
         print(f"Mean Squared Error: {mse:.2f}")
 
-        return model
+        return model, y_test, y_pred
 
     def predict_salary(self, model, new_data):
         """Predict salary for new job entries."""
@@ -112,6 +112,23 @@ class Main:
         # Predict the salary
         predicted_salary = model.predict(new_X)
         return predicted_salary
+
+    def plot_predictions_vs_actual(self, y_test, y_pred):
+        """Plot predicted salaries vs actual salaries."""
+        plt.figure(figsize=(10, 6))
+
+        # Scatter plot for actual vs predicted values
+        plt.scatter(y_test, y_pred, alpha=0.5)
+
+        # Line of perfect predictions (y = x)
+        plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], color='red', linestyle='--',
+                 label="Perfect Prediction (y=x)")
+
+        plt.title('Predictions vs Actual Salaries')
+        plt.xlabel('Actual Salary ($)')
+        plt.ylabel('Predicted Salary ($)')
+        plt.legend()
+        plt.show()
 
     def analyze_data(self):
         """Analyze the processed salary data."""
@@ -158,4 +175,6 @@ if __name__ == '__main__':
 
     main.preprocessing()
     X, y = main.data_embedding()
-    model = main.train_model(X, y)
+    model, y_test, y_pred = main.train_model(X, y)
+
+    main.plot_predictions_vs_actual(y_test, y_pred)
