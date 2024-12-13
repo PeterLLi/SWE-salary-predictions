@@ -176,5 +176,4 @@ if __name__ == '__main__':
     main.preprocessing()
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
-
     main.plot_predictions_vs_actual(y_test, y_pred)
