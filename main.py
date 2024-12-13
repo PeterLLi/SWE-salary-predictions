@@ -1,8 +1,14 @@
+import numpy as np
 import pandas as pd
 import re
 import sklearn as sk
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sentence_transformers import SentenceTransformer
+import torch
 
 
 class Main:
@@ -15,7 +21,7 @@ class Main:
         """Preprocess the salary data by cleaning and transforming salary values."""
         processed_salaries = []
         self.model_dataset = self.model_dataset.drop(columns=['Company Score'])
-        self.model_dataset = self.model_dataset.drop(columns=['Date'], axis=1)
+        self.model_dataset = self.model_dataset.drop(columns=['Date'])
 
         for salary in self.model_dataset['Salary']:
             if pd.isna(salary):
@@ -55,36 +61,55 @@ class Main:
 
         return self.model_dataset
 
-    def split_data(self):
-        print(self.model_dataset.columns)
-        X = (self.model_dataset.drop(columns=['Company Score', 'Date', 'Salary', 'processed_salary']))
-        print(X.columns)
-        y = self.model_dataset['processed_salary']
-        X_train, X_test, y_train, y_test = sk.model_selection.train_test_split(X, y, test_size=0.2, random_state=42)
-        return X_train, X_test, y_train, y_test
+    def data_embedding(self):
+        """Generate embeddings for company name, location, and job title."""
+        model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    def scale_data(self):
-        train, test, _, _ = self.split_data()
-        scaler = sk.preprocessing.StandardScaler()
-        X_train = scaler.fit_transform(train)
-        X_test = scaler.transform(test)
-        return X_train, X_test
+        # Generate embeddings for each column
+        company_embeddings = model.encode(self.model_dataset['Company'].tolist())
+        location_embeddings = model.encode(self.model_dataset['Location'].tolist())
+        job_title_embeddings = model.encode(self.model_dataset['Job Title'].tolist())
 
-    def regressor_model_predict(self):
-        regressor = sk.linear_model.LinearRegression()
-        X_train, X_test = self.scale_data()
-        _, _, y_train, _ = self.split_data()
-        regressor.fit(X_train, y_train)
-        return regressor.predict(X_test)
+        # Combine embeddings into a single feature vector for each row
+        X = np.hstack([company_embeddings, location_embeddings, job_title_embeddings])
 
-    def evaluate_model(self):
-        _, _, _, y_test = self.split_data()
-        y_pred = self.regressor_model_predict()
-        mse_result = sk.metrics.mean_squared_error(y_test, y_pred)
-        r2_result = sk.metrics.r2_score(y_test, y_pred)
-        print('MSE: ', mse_result)
-        print('R2: ', r2_result)
+        # Get the processed salaries as the target variable
+        y = self.model_dataset['processed_salary'].values
 
+        return X, y
+
+    def train_model(self, X, y):
+        """Train a linear regression model using the embeddings as features."""
+        # Split the data into training and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Initialize and train the linear regression model
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+
+        # Make predictions on the test set
+        y_pred = model.predict(X_test)
+
+        # Calculate Mean Squared Error (MSE)
+        mse = mean_squared_error(y_test, y_pred)
+        print(f"Mean Squared Error: {mse:.2f}")
+
+        return model
+
+    def predict_salary(self, model, new_data):
+        """Predict salary for new job entries."""
+        # Generate embeddings for new data
+        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        new_company_embeddings = embedding_model.encode(new_data['Company Name'].tolist())
+        new_location_embeddings = embedding_model.encode(new_data['Location'].tolist())
+        new_job_title_embeddings = embedding_model.encode(new_data['Job Title'].tolist())
+
+        # Combine the embeddings into a single feature vector
+        new_X = np.hstack([new_company_embeddings, new_location_embeddings, new_job_title_embeddings])
+
+        # Predict the salary
+        predicted_salary = model.predict(new_X)
+        return predicted_salary
 
     def analyze_data(self):
         """Analyze the processed salary data."""
@@ -106,7 +131,8 @@ class Main:
 
         # Sort salaries and plot them
         # sorted_salaries = sorted(self.model_dataset['processed_salary'])
-        plt.scatter(range(len(self.model_dataset['processed_salary'])), self.model_dataset['processed_salary'], alpha=0.5)
+        plt.scatter(range(len(self.model_dataset['processed_salary'])), self.model_dataset['processed_salary'],
+                    alpha=0.5)
 
         plt.title('Software Engineer Salaries (Sorted)')
         plt.xlabel('Rank')
@@ -116,16 +142,17 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
-    analysis = main.analyze_data()
+    # analysis = main.analyze_data()
+    #
+    # # Print each metric on its own line with formatting
+    # print("Salary Analysis:")
+    # print(f"Average Salary: ${analysis['average_salary']:,.2f}")
+    # print(f"Median Salary: ${analysis['median_salary']:,.2f}")
+    # print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
+    # print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
+    # print(f"Total Positions: {analysis['total_positions']}")
 
-    # Print each metric on its own line with formatting
-    print("Salary Analysis:")
-    print(f"Average Salary: ${analysis['average_salary']:,.2f}")
-    print(f"Median Salary: ${analysis['median_salary']:,.2f}")
-    print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
-    print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
-    print(f"Total Positions: {analysis['total_positions']}")
+    # main.visualization()
 
-    main.visualization()
-
-    main.evaluate_model()
+    X, y = main.data_embedding()
+    model = main.train_model(X, y)
