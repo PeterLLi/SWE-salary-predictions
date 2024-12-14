@@ -18,8 +18,6 @@ class Main:
     def preprocessing(self):
         """Preprocess the salary data by cleaning and transforming salary values."""
         processed_salaries = []
-        # self.model_dataset = self.model_dataset.drop(columns=['Company Score'])
-        # self.model_dataset = self.model_dataset.drop(columns=['Company'])
         self.model_dataset = self.model_dataset.drop(columns=['Date'])
 
         for salary in self.model_dataset['Salary']:
@@ -58,39 +56,60 @@ class Main:
         self.model_dataset = self.model_dataset.dropna(subset=['processed_salary'])
         self.model_dataset = self.model_dataset.drop(columns=['Salary'])
 
+        # Scale processed salaries
+        self.model_dataset['processed_salary'] = np.log1p(
+            self.model_dataset['processed_salary'])  # Optional log transform
         scaler = sk.preprocessing.StandardScaler()
         self.model_dataset['processed_salary'] = scaler.fit_transform(self.model_dataset[['processed_salary']])
+
+        # Scale the Company Score
+        score_scaler = sk.preprocessing.StandardScaler()
+        self.model_dataset['Company Score'] = score_scaler.fit_transform(self.model_dataset[['Company Score']])
+
+        # Add interaction between Company Score and processed salary
+        self.model_dataset['score_job_interaction'] = (
+                self.model_dataset['Company Score'] * self.model_dataset['processed_salary']
+        )
+
         return self.model_dataset
 
     def data_embedding(self):
-        """Generate embeddings for company name, location, and job title."""
+        """Generate unified embeddings for all text-based features."""
         transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-        # Generate embeddings for each column
-        company_embeddings = transformer_model.encode(self.model_dataset['Company'].tolist())
-        location_embeddings = transformer_model.encode(self.model_dataset['Location'].tolist())
-        job_title_embeddings = transformer_model.encode(self.model_dataset['Job Title'].tolist())
+        # Combine text fields into a single string
+        self.model_dataset['Combined'] = (
+                self.model_dataset['Company'] + " " +
+                self.model_dataset['Job Title'] + " " +
+                self.model_dataset['Location']
+        )
 
-        # Combine embeddings into a single feature vector for each row
-        X = np.hstack([company_embeddings, location_embeddings, job_title_embeddings])
+        # Generate embeddings for the combined text
+        combined_embeddings = transformer_model.encode(self.model_dataset['Combined'].tolist())
 
         # Get the processed salaries as the target variable
         y = self.model_dataset['processed_salary'].values
 
-        return X, y
+        return combined_embeddings, y
 
     def train_model(self, X, y, n_splits=5):
         """Train and evaluate the model using K-Fold cross-validation."""
-        # Scale the Company Score
-        score = self.model_dataset['Company Score'].values.reshape(-1, 1)
-        scaler = sk.preprocessing.StandardScaler()
-        score_scaled = scaler.fit_transform(score)
+        # Directly use the preprocessed and scaled Company Score
+        score_scaled = self.model_dataset['Company Score'].values.reshape(-1, 1)
 
         # Add the scaled score to the feature matrix
         X = np.hstack([X, score_scaled])
 
         # Define the model
-        xgb_model = XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, min_child_weight=3, random_state=42)
+        xgb_model = XGBRegressor(
+            n_estimators=500,
+            learning_rate=0.01,
+            max_depth=6,
+            min_child_weight=3,  # Increase regularization
+            subsample=0.7,  # Train on 70% of rows per tree
+            colsample_bytree=0.7,  # Use 70% of features per tree
+            random_state=42
+        )
 
         # Set up K-Fold cross-validation
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
