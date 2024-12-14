@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import re
 import sklearn as sk
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
@@ -19,8 +19,8 @@ class Main:
     def preprocessing(self):
         """Preprocess the salary data by cleaning and transforming salary values."""
         processed_salaries = []
-        self.model_dataset = self.model_dataset.drop(columns=['Company Score'])
-        self.model_dataset = self.model_dataset.drop(columns=['Company'])
+        # self.model_dataset = self.model_dataset.drop(columns=['Company Score'])
+        # self.model_dataset = self.model_dataset.drop(columns=['Company'])
         self.model_dataset = self.model_dataset.drop(columns=['Date'])
 
         for salary in self.model_dataset['Salary']:
@@ -68,12 +68,17 @@ class Main:
         transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
 
         # Generate embeddings for each column
-        # company_embeddings = transformer_model.encode(self.model_dataset['Company'].tolist())
+        company_embeddings = transformer_model.encode(self.model_dataset['Company'].tolist())
         location_embeddings = transformer_model.encode(self.model_dataset['Location'].tolist())
         job_title_embeddings = transformer_model.encode(self.model_dataset['Job Title'].tolist())
 
+        # Score scaling
+        score = self.model_dataset['Company Score'].values.reshape(-1, 1)
+        scaler = sk.preprocessing.StandardScaler()
+        score_scaled = scaler.fit_transform(score)
+
         # Combine embeddings into a single feature vector for each row
-        X = np.hstack([location_embeddings, job_title_embeddings])
+        X = np.hstack([company_embeddings, location_embeddings, job_title_embeddings, score_scaled])
 
         # Get the processed salaries as the target variable
         y = self.model_dataset['processed_salary'].values
@@ -101,22 +106,20 @@ class Main:
 
         return model, y_test, y_pred
 
-    def predict_salary(self, model, new_data, scaler):
+    def predict_salary(self, model, new_data):
         """Predict salary for new job entries."""
         # Generate embeddings for new data
         embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        new_company_embeddings = embedding_model.encode(new_data['Company Name'].tolist())
         new_location_embeddings = embedding_model.encode(new_data['Location'].tolist())
         new_job_title_embeddings = embedding_model.encode(new_data['Job Title'].tolist())
 
         # Combine the embeddings into a single feature vector
-        new_X = np.hstack([new_location_embeddings, new_job_title_embeddings])
+        new_X = np.hstack([new_company_embeddings, new_location_embeddings, new_job_title_embeddings])
 
         # Predict the salary
         predicted_salary = model.predict(new_X)
-
-        predicted_salary = scaler.inverse_transform(predicted_salary.reshape(-1, 1))
-
-        return predicted_salary[0][0]
+        return predicted_salary
 
     def plot_predictions_vs_actual(self, y_test, y_pred):
         """Plot predicted salaries vs actual salaries."""
@@ -164,52 +167,21 @@ class Main:
         plt.show()
 
 
-class PredictSalary:
-    def __init__(self, model, scaler):
-        self.model = model
-        self.scaler = scaler
-
-    def predict_salary(self, title, location):
-        """Predict salary for new job entries."""
-        # Generate embeddings for new data
-        predict = self.format_data(title, location)
-        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        new_location_embeddings = embedding_model.encode(predict['Location'].tolist())
-        new_job_title_embeddings = embedding_model.encode(predict['Job Title'].tolist())
-
-        # Combine the embeddings into a single feature vector
-        new_X = np.hstack([new_location_embeddings, new_job_title_embeddings])
-
-        # Predict the salary
-        predicted_salary = model.predict(new_X)
-
-        predicted_salary = scaler.inverse_transform(predicted_salary.reshape(-1, 1))
-
-        # return predicted_salary[0][0]
-        print(f"Predicted Salary ($): {predicted_salary[0][0]}, for {title} in {location}")
-
-    def format_data(self, title, location):
-        new_data = pd.DataFrame({
-            'Location': [location],
-            'Job Title': [title]
-        })
-        return new_data
-
-
 if __name__ == '__main__':
     main = Main()
-    scaler = sk.preprocessing.StandardScaler()
+    # analysis = main.analyze_data()
+    #
+    # # Print each metric on its own line with formatting
+    # print("Salary Analysis:")
+    # print(f"Average Salary: ${analysis['average_salary']:,.2f}")
+    # print(f"Median Salary: ${analysis['median_salary']:,.2f}")
+    # print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
+    # print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
+    # print(f"Total Positions: {analysis['total_positions']}")
+
+    # main.visualization()
 
     main.preprocessing()
-    scaler.fit(main.model_dataset[['processed_salary']])
-
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
     main.plot_predictions_vs_actual(y_test, y_pred)
-
-    # Enter own values for location and title
-    location = input("Please enter a location i.e. Milwaukee, WI\n")
-    title = input("Please enter a job position i.e. Senior Software Engineer\n")
-
-    # Predict the salary for new data
-    PredictSalary(model, scaler).predict_salary(location, title)
