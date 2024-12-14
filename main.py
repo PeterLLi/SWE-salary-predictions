@@ -80,34 +80,63 @@ class Main:
 
         return X, y
 
-    def train_model(self, X, y):
-        """Train a gradient boosting model using XGBoost with a simple train-test split."""
+    def train_model(self, X, y, n_splits=5):
+        """Train and evaluate the model using K-Fold cross-validation."""
         # Scale the Company Score
         score = self.model_dataset['Company Score'].values.reshape(-1, 1)
         scaler = sk.preprocessing.StandardScaler()
         score_scaled = scaler.fit_transform(score)
 
-        # Add the scaled score to the existing feature matrix
+        # Add the scaled score to the feature matrix
         X = np.hstack([X, score_scaled])
 
-        # Split data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        # Initialize and train the XGBoost model
+        # Define the model
         xgb_model = XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, min_child_weight=3, random_state=42)
-        xgb_model.fit(X_train, y_train)
 
-        # Make predictions on the test set
-        y_pred = xgb_model.predict(X_test)
+        # Set up K-Fold cross-validation
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-        # Calculate metrics
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
+        mse_scores = []
+        r2_scores = []
 
-        print(f"Mean Squared Error: {mse:.2f}")
-        print(f"R² Score: {r2:.3f}")
+        # Variables to store the last fold's test data and predictions
+        last_y_test = None
+        last_y_pred = None
 
-        return xgb_model, y_test, y_pred
+        # Perform the K-Fold split
+        for train_index, test_index in kf.split(X):
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+
+            # Train the model
+            xgb_model.fit(X_train, y_train)
+
+            # Predict on the test fold
+            y_pred = xgb_model.predict(X_test)
+
+            # Save the last fold's results
+            last_y_test = y_test
+            last_y_pred = y_pred
+
+            # Evaluate the model
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+
+            mse_scores.append(mse)
+            r2_scores.append(r2)
+
+        # Calculate average metrics
+        avg_mse = np.mean(mse_scores)
+        std_mse = np.std(mse_scores)
+        avg_r2 = np.mean(r2_scores)
+        std_r2 = np.std(r2_scores)
+
+        print(f"Average MSE across folds: {avg_mse:.2f} ± {std_mse:.2f}")
+        print(f"Average R² across folds: {avg_r2:.3f} ± {std_r2:.3f}")
+
+        xgb_model.fit(X, y)
+
+        return xgb_model, last_y_test, last_y_pred
 
     def predict_salary(self, model, new_data):
         """Predict salary for new job entries."""
