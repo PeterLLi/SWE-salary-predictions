@@ -72,13 +72,8 @@ class Main:
         location_embeddings = transformer_model.encode(self.model_dataset['Location'].tolist())
         job_title_embeddings = transformer_model.encode(self.model_dataset['Job Title'].tolist())
 
-        # Score scaling
-        score = self.model_dataset['Company Score'].values.reshape(-1, 1)
-        scaler = sk.preprocessing.StandardScaler()
-        score_scaled = scaler.fit_transform(score)
-
         # Combine embeddings into a single feature vector for each row
-        X = np.hstack([company_embeddings, location_embeddings, job_title_embeddings, score_scaled])
+        X = np.hstack([company_embeddings, location_embeddings, job_title_embeddings])
 
         # Get the processed salaries as the target variable
         y = self.model_dataset['processed_salary'].values
@@ -86,16 +81,24 @@ class Main:
         return X, y
 
     def train_model(self, X, y):
-        """Train a gradient boosting model using XGBoost."""
-        # Split data
+        """Train a gradient boosting model using XGBoost with a simple train-test split."""
+        # Scale the Company Score
+        score = self.model_dataset['Company Score'].values.reshape(-1, 1)
+        scaler = sk.preprocessing.StandardScaler()
+        score_scaled = scaler.fit_transform(score)
+
+        # Add the scaled score to the existing feature matrix
+        X = np.hstack([X, score_scaled])
+
+        # Split data into training and testing sets
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Initialize and train model
-        model = XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, min_child_weight=3, random_state=42)
-        model.fit(X_train, y_train)
+        # Initialize and train the XGBoost model
+        xgb_model = XGBRegressor(n_estimators=200, learning_rate=0.05, max_depth=4, min_child_weight=3, random_state=42)
+        xgb_model.fit(X_train, y_train)
 
-        # Make predictions
-        y_pred = model.predict(X_test)
+        # Make predictions on the test set
+        y_pred = xgb_model.predict(X_test)
 
         # Calculate metrics
         mse = mean_squared_error(y_test, y_pred)
@@ -104,7 +107,7 @@ class Main:
         print(f"Mean Squared Error: {mse:.2f}")
         print(f"R² Score: {r2:.3f}")
 
-        return model, y_test, y_pred
+        return xgb_model, y_test, y_pred
 
     def predict_salary(self, model, new_data):
         """Predict salary for new job entries."""
