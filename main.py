@@ -9,6 +9,8 @@ from sentence_transformers import SentenceTransformer
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.ensemble import RandomForestRegressor
+
+
 class Main:
     def __init__(self):
         self.salary_data = pd.read_csv("software_engineer_salaries.csv")
@@ -102,12 +104,14 @@ class Main:
 
         # Define the model
         xgb_model = XGBRegressor(
-            n_estimators=500,
-            learning_rate=0.01,
-            max_depth=6,
-            min_child_weight=3,  # Increase regularization
-            subsample=0.7,  # Train on 70% of rows per tree
-            colsample_bytree=0.7,  # Use 70% of features per tree
+            n_estimators=1000,
+            learning_rate=0.005,
+            max_depth=12,
+            min_child_weight=4,
+            reg_alpha=0.5,  # L1 regularization
+            reg_lambda=1.0,  # L2 regularization
+            subsample=0.8,
+            colsample_bytree=0.8,
             random_state=42
         )
 
@@ -149,81 +153,12 @@ class Main:
         avg_r2 = np.mean(r2_scores)
         std_r2 = np.std(r2_scores)
 
-        print(f"Average MSE across folds: {avg_mse:.2f} ± {std_mse:.2f}")
-        print(f"Average R² across folds: {avg_r2:.3f} ± {std_r2:.3f}")
+        print(f"XGBoost Average MSE across folds: {avg_mse:.2f} ± {std_mse:.2f}")
+        print(f"XGBoost Average R² across folds: {avg_r2:.3f} ± {std_r2:.3f}")
 
         xgb_model.fit(X, y)
 
         return xgb_model, last_y_test, last_y_pred
-
-    def train_random_forest(self, X, y):
-        """Train a Random Forest model with a train-test split."""
-        # Scale the Company Score
-        score = self.model_dataset['Company Score'].values.reshape(-1, 1)
-        scaler = sk.preprocessing.StandardScaler()
-        score_scaled = scaler.fit_transform(score)
-
-        # Add the scaled score to the existing feature matrix
-        X = np.hstack([X, score_scaled])
-
-        # Split data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        # Initialize the Random Forest Regressor
-        rf_model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-
-        # Train the model
-        rf_model.fit(X_train, y_train)
-
-        # Make predictions on the test set
-        y_pred = rf_model.predict(X_test)
-
-        # Calculate metrics
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-
-        print(f"Mean Squared Error: {mse:.2f}")
-        print(f"R² Score: {r2:.3f}")
-
-        return rf_model, y_test, y_pred
-
-    def train_random_forest_with_cv(self, X, y):
-        """Train a Random Forest model with cross-validation."""
-        # Scale the Company Score
-        score = self.model_dataset['Company Score'].values.reshape(-1, 1)
-        scaler = sk.preprocessing.StandardScaler()
-        score_scaled = scaler.fit_transform(score)
-
-        # Add the scaled score to the existing feature matrix
-        X = np.hstack([X, score_scaled])
-
-        # Initialize the Random Forest Regressor
-        rf_model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
-
-        # Perform 5-fold cross-validation
-        cv_scores = cross_val_score(rf_model, X, y, cv=5, scoring='r2')
-
-        print(f"Cross-Validation R² Scores: {cv_scores}")
-        print(f"Mean Cross-Validation R²: {cv_scores.mean():.3f}")
-        print(f"Standard Deviation of R²: {cv_scores.std():.3f}")
-
-        # Train-test split for final evaluation
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        # Train the model on the training set
-        rf_model.fit(X_train, y_train)
-
-        # Make predictions on the test set
-        y_pred = rf_model.predict(X_test)
-
-        # Calculate metrics on the test set
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-
-        print(f"Test Set Mean Squared Error: {mse:.2f}")
-        print(f"Test Set R² Score: {r2:.3f}")
-
-        return rf_model, y_test, y_pred
 
     def predict_salary(self, model, new_data):
         """Predict salary for new job entries."""
@@ -288,25 +223,9 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
-    # analysis = main.analyze_data()
-    #
-    # # Print each metric on its own line with formatting
-    # print("Salary Analysis:")
-    # print(f"Average Salary: ${analysis['average_salary']:,.2f}")
-    # print(f"Median Salary: ${analysis['median_salary']:,.2f}")
-    # print(f"Minimum Salary: ${analysis['min_salary']:,.2f}")
-    # print(f"Maximum Salary: ${analysis['max_salary']:,.2f}")
-    # print(f"Total Positions: {analysis['total_positions']}")
-
-    # main.visualization()
 
     main.preprocessing()
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
     main.plot_predictions_vs_actual(y_test, y_pred)
 
-    rf_model, y_test_rf, y_pred_rf = main.train_random_forest(X, y)
-    main.plot_predictions_vs_actual(y_test_rf, y_pred_rf)
-
-    rf_model, y_test_rfcv, y_pred_rfcv = main.train_random_forest_with_cv(X, y)
-    main.plot_predictions_vs_actual(y_test_rfcv, y_pred_rfcv)
