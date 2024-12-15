@@ -31,8 +31,15 @@ class Main:
 
     def preprocessing(self):
         """Preprocess the salary data by selecting key features and standardizing salaries."""
-        self.model_dataset = self.salary_data[['title', 'company', 'salary', 'location']].copy()
+        # Filter rows where the 'types' column contains "full" (case insensitive)
+        filtered_data = self.salary_data[self.salary_data['types'].str.contains(r'full', flags=re.IGNORECASE, na=False, regex=True)]
+
+        # Create a subset of the filtered data with selected columns and drop rows with missing values
+        self.model_dataset = filtered_data[['title', 'company', 'salary', 'location']].copy()
         self.model_dataset = self.model_dataset.dropna()
+
+        # Optional: Print the number of rows in the final dataset
+        print(len(self.model_dataset))
 
         # Enhanced title features
         self.model_dataset['is_senior'] = self.model_dataset['title'].str.lower().str.contains(
@@ -105,7 +112,13 @@ class Main:
             elif 'month' in salary:
                 final_number = final_number * 12
 
-            processed_salaries.append(final_number)
+            # processed_salaries.append(final_number)
+            min_salary = 30000  # $30k minimum
+            max_salary = 300000  # $500k maximum
+            if min_salary <= final_number <= max_salary:
+                processed_salaries.append(final_number)
+            else:
+                processed_salaries.append(None)  # Will be removed by dropna()
 
         self.model_dataset['processed_salary'] = processed_salaries
         self.model_dataset = self.model_dataset.dropna()
@@ -236,9 +249,30 @@ class Main:
         plt.ylabel('Salary ($)')
         plt.show()
 
+    def visualize_predictions(self):
+        """Visualize model predictions vs actual values."""
+        plt.figure(figsize=(10, 6))
+
+        # Create a scatter plot of actual vs predicted values
+        plt.scatter(self.last_y_test, self.last_y_pred, alpha=0.5)
+
+        # Add a perfect prediction line
+        min_val = min(min(self.last_y_test), min(self.last_y_pred))
+        max_val = max(max(self.last_y_test), max(self.last_y_pred))
+        plt.plot([min_val, max_val], [min_val, max_val], 'r--', label='Perfect Prediction')
+
+        plt.title('Predicted vs Actual Salaries')
+        plt.xlabel('Actual Salary ($)')
+        plt.ylabel('Predicted Salary ($)')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.show()
+
 
 if __name__ == '__main__':
     main = Main()
     main.preprocessing()
+    main.visualization()
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
+    main.visualize_predictions()
