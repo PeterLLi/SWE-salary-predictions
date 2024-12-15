@@ -13,7 +13,21 @@ class Main:
     def __init__(self):
         self.model_dataset = None
         self.salary_data = pd.read_csv("us-software-engineer-jobs-zenrows.csv")
-        self.predictor = None
+        self.xgb_model = XGBRegressor(
+            n_estimators=750,
+            learning_rate=0.005,
+            max_depth=10,
+            min_child_weight=6,
+            reg_alpha=1.0,
+            reg_lambda=1.0,
+            subsample=0.6,
+            colsample_bytree=0.6,
+            random_state=42
+        )
+        self.mse_scores = []
+        self.r2_scores = []
+        self.last_y_test = None
+        self.last_y_pred = None
 
     def preprocessing(self):
         """Preprocess the salary data by selecting key features and standardizing salaries."""
@@ -22,11 +36,13 @@ class Main:
 
         # Enhanced title features
         self.model_dataset['is_senior'] = self.model_dataset['title'].str.lower().str.contains(
-            'senior|sr\.|sr|staff|principal')
+            r'senior|sr\.?|staff|principal|lead|architect')
         self.model_dataset['is_lead'] = self.model_dataset['title'].str.lower().str.contains(
-            'vice|lead|manager|head|director|chief')
+            r'vice|manager|head|director|chief')
+        self.model_dataset['is_mid'] = self.model_dataset['title'].str.lower().str.contains(
+            r'(?:\s|^)iii\b|(?:\s|^)iv\b|level\s*[345]|software engineer\s*[345]|\s+3\b|\s+4\b|\s+5\b')
         self.model_dataset['is_junior'] = self.model_dataset['title'].str.lower().str.contains(
-            'junior|jr\.|jr|entry|associate')
+            r'junior|jr\.?|entry|associate|(?:\s|^)i\b|(?:\s|^)ii\b|level\s*[12]|software engineer\s*[12]|\s+1\b|\s+2\b')
         self.model_dataset['is_fullstack'] = self.model_dataset['title'].str.lower().str.contains(
             'full.?stack|full.?end')
         self.model_dataset['is_frontend'] = self.model_dataset['title'].str.lower().str.contains(
@@ -34,11 +50,11 @@ class Main:
         self.model_dataset['is_backend'] = self.model_dataset['title'].str.lower().str.contains(
             'back.?end|api|golang|java|python')
         self.model_dataset['is_ml'] = self.model_dataset['title'].str.lower().str.contains(
-            'machine|learning|artificial|ml|ai|data sci')
+            'machine|learning|artificial|ml|ai|data')
         self.model_dataset['is_cloud'] = self.model_dataset['title'].str.lower().str.contains(
             'sre|cloud|aws|azure|gcp|devops|infrastructure')
         self.model_dataset['is_mobile'] = self.model_dataset['title'].str.lower().str.contains(
-            'mobile|ios|android|flutter|react native')
+            'mobile|ios|android|flutter|react')
         self.model_dataset['is_embedded'] = self.model_dataset['title'].str.lower().str.contains(
             'embedded|hardware|firmware|iot')
         self.model_dataset['is_security'] = self.model_dataset['title'].str.lower().str.contains(
@@ -49,7 +65,7 @@ class Main:
             'game|unity|unreal|gaming')
 
         # Remote work feature
-        self.model_dataset['is_remote'] = self.model_dataset['location'].str.lower().str.contains('remote',na=False)
+        self.model_dataset['is_remote'] = self.model_dataset['location'].str.lower().str.contains('remote', na=False)
 
         # Tech hub locations
         tech_hubs = {
@@ -113,6 +129,7 @@ class Main:
         title_location_features = np.column_stack([
             self.model_dataset['is_senior'],
             self.model_dataset['is_lead'],
+            self.model_dataset['is_mid'],
             self.model_dataset['is_junior'],
             self.model_dataset['is_fullstack'],
             self.model_dataset['is_frontend'],
@@ -139,34 +156,11 @@ class Main:
 
     def train_model(self, X, y, n_splits=5):
         """Train and evaluate the model using K-Fold cross-validation."""
-        # Directly use the preprocessed and scaled Company Score
-        # score_scaled = self.model_dataset['Company Score'].values.reshape(-1, 1)
-
-        # Add the scaled score to the feature matrix
-        # X = np.hstack([X, score_scaled])
-
-        # Define the model
-        xgb_model = XGBRegressor(
-            n_estimators=750,
-            learning_rate=0.01,
-            max_depth=12,
-            min_child_weight=4,
-            # reg_alpha=0.5,
-            # reg_lambda=1.0,
-            subsample=0.7,
-            colsample_bytree=0.7,
-            random_state=42
-        )
-
         # Set up K-Fold cross-validation
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-        mse_scores = []
-        r2_scores = []
-
-        # Variables to store the last fold's test data and predictions
-        last_y_test = None
-        last_y_pred = None
+        self.mse_scores = []
+        self.r2_scores = []
 
         # Perform the K-Fold split
         for train_index, test_index in kf.split(X):
@@ -174,34 +168,43 @@ class Main:
             y_train, y_test = y[train_index], y[test_index]
 
             # Train the model
-            xgb_model.fit(X_train, y_train)
+            self.xgb_model.fit(X_train, y_train)
 
             # Predict on the test fold
-            y_pred = xgb_model.predict(X_test)
+            y_pred = self.xgb_model.predict(X_test)
 
             # Save the last fold's results
-            last_y_test = y_test
-            last_y_pred = y_pred
+            self.last_y_test = y_test
+            self.last_y_pred = y_pred
 
             # Evaluate the model
             mse = mean_squared_error(y_test, y_pred)
             r2 = r2_score(y_test, y_pred)
 
-            mse_scores.append(mse)
-            r2_scores.append(r2)
+            self.mse_scores.append(mse)
+            self.r2_scores.append(r2)
 
         # Calculate average metrics
-        avg_mse = np.mean(mse_scores)
-        std_mse = np.std(mse_scores)
-        avg_r2 = np.mean(r2_scores)
-        std_r2 = np.std(r2_scores)
+        avg_mse = np.mean(self.mse_scores)
+        std_mse = np.std(self.mse_scores)
+        avg_r2 = np.mean(self.r2_scores)
+        std_r2 = np.std(self.r2_scores)
 
         print(f"XGBoost Average MSE across folds: {avg_mse:.2f} ± {std_mse:.2f}")
         print(f"XGBoost Average R² across folds: {avg_r2:.3f} ± {std_r2:.3f}")
 
-        xgb_model.fit(X, y)
+        self.xgb_model.fit(X, y)
 
-        return xgb_model, last_y_test, last_y_pred
+        # Test final model (you might want to use a held-out test set instead)
+        final_predictions = self.xgb_model.predict(X)
+        final_mse = mean_squared_error(y, final_predictions)
+        final_r2 = r2_score(y, final_predictions)
+
+        print("\nFinal model metrics:")
+        print(f"MSE on full dataset: {final_mse:.2f}")
+        print(f"R² on full dataset: {final_r2:.3f}")
+
+        return self.xgb_model, self.last_y_test, self.last_y_pred
 
     def analyze_data(self):
         """Analyze the processed salary data."""
@@ -221,8 +224,6 @@ class Main:
         sns.set_theme()
         plt.figure(figsize=(10, 6))
 
-        # Sort salaries and plot them
-        # sorted_salaries = sorted(self.model_dataset['processed_salary'])
         plt.scatter(range(len(self.model_dataset['processed_salary'])), self.model_dataset['processed_salary'],
                     alpha=0.5)
 
@@ -237,4 +238,3 @@ if __name__ == '__main__':
     main.preprocessing()
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
-
