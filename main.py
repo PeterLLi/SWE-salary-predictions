@@ -31,7 +31,7 @@ class Main:
 
     def preprocessing(self):
         """Preprocess the salary data by selecting key features and standardizing salaries."""
-        self.model_dataset = self.salary_data[['title', 'company', 'salary', 'location', 'remote_work_model']].copy()
+        self.model_dataset = self.salary_data[['title', 'company', 'salary', 'location']].copy()
         self.model_dataset = self.model_dataset.dropna()
 
         # Enhanced title features
