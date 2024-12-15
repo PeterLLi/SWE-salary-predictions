@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import re
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sentence_transformers import SentenceTransformer
@@ -14,14 +14,14 @@ class Main:
         self.model_dataset = None
         self.salary_data = pd.read_csv("us-software-engineer-jobs-zenrows.csv")
         self.xgb_model = XGBRegressor(
-            n_estimators=750,
+            n_estimators=1000,
             learning_rate=0.005,
-            max_depth=10,
-            min_child_weight=6,
+            max_depth=12,
+            min_child_weight=4,
             reg_alpha=1.0,
-            reg_lambda=1.0,
-            subsample=0.6,
-            colsample_bytree=0.6,
+            reg_lambda=0.5,
+            subsample=0.7,
+            colsample_bytree=0.7,
             random_state=42
         )
         self.mse_scores = []
@@ -155,54 +155,58 @@ class Main:
         return X, y
 
     def train_model(self, X, y, n_splits=5):
-        """Train and evaluate the model using K-Fold cross-validation."""
-        # Set up K-Fold cross-validation
+        """Train and evaluate the model using K-Fold cross-validation and holdout test set."""
+        # First split into training and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Set up K-Fold cross-validation on training data
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
         self.mse_scores = []
         self.r2_scores = []
 
+        print("Performing cross-validation on training data...")
         # Perform the K-Fold split
-        for train_index, test_index in kf.split(X):
-            X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = y[train_index], y[test_index]
+        for train_index, val_index in kf.split(X_train):
+            X_fold_train, X_fold_val = X_train[train_index], X_train[val_index]
+            y_fold_train, y_fold_val = y_train[train_index], y_train[val_index]
 
             # Train the model
-            self.xgb_model.fit(X_train, y_train)
+            self.xgb_model.fit(X_fold_train, y_fold_train)
 
-            # Predict on the test fold
-            y_pred = self.xgb_model.predict(X_test)
+            # Predict on validation fold
+            y_fold_pred = self.xgb_model.predict(X_fold_val)
 
             # Save the last fold's results
-            self.last_y_test = y_test
-            self.last_y_pred = y_pred
+            self.last_y_test = y_fold_val
+            self.last_y_pred = y_fold_pred
 
-            # Evaluate the model
-            mse = mean_squared_error(y_test, y_pred)
-            r2 = r2_score(y_test, y_pred)
+            # Calculate metrics
+            mse = mean_squared_error(y_fold_val, y_fold_pred)
+            r2 = r2_score(y_fold_val, y_fold_pred)
 
             self.mse_scores.append(mse)
             self.r2_scores.append(r2)
 
-        # Calculate average metrics
+        # Print cross-validation results
         avg_mse = np.mean(self.mse_scores)
         std_mse = np.std(self.mse_scores)
         avg_r2 = np.mean(self.r2_scores)
         std_r2 = np.std(self.r2_scores)
 
-        print(f"XGBoost Average MSE across folds: {avg_mse:.2f} ± {std_mse:.2f}")
-        print(f"XGBoost Average R² across folds: {avg_r2:.3f} ± {std_r2:.3f}")
+        print(f"Cross-validation metrics (on training data):")
+        print(f"Average MSE across folds: {avg_mse:.2f} ± {std_mse:.2f}")
+        print(f"Average R² across folds: {avg_r2:.3f} ± {std_r2:.3f}")
 
-        self.xgb_model.fit(X, y)
+        # Train final model on last fold and evaluate on test set
+        print("\nEvaluating on holdout test set...")
+        y_test_pred = self.xgb_model.predict(X_test)
+        test_mse = mean_squared_error(y_test, y_test_pred)
+        test_r2 = r2_score(y_test, y_test_pred)
 
-        # Test final model (you might want to use a held-out test set instead)
-        final_predictions = self.xgb_model.predict(X)
-        final_mse = mean_squared_error(y, final_predictions)
-        final_r2 = r2_score(y, final_predictions)
-
-        print("\nFinal model metrics:")
-        print(f"MSE on full dataset: {final_mse:.2f}")
-        print(f"R² on full dataset: {final_r2:.3f}")
+        print(f"Test set metrics:")
+        print(f"MSE on test set: {test_mse:.2f}")
+        print(f"R² on test set: {test_r2:.3f}")
 
         return self.xgb_model, self.last_y_test, self.last_y_pred
 
