@@ -13,7 +13,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 class Main:
     def __init__(self):
         self.model_dataset = None
-        self.salary_data = pd.read_csv("~/desktop/us-software-engineer-jobs-zenrows.csv")
+        self.salary_data = pd.read_csv("us-software-engineer-jobs-zenrows.csv")
         self.predictor = None
 
     def preprocessing(self):
