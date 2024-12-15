@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import re
-import sklearn as sk
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -18,8 +17,52 @@ class Main:
 
     def preprocessing(self):
         """Preprocess the salary data by selecting key features and standardizing salaries."""
-        self.model_dataset = self.salary_data[['title', 'company', 'salary', 'location']].copy()
+        self.model_dataset = self.salary_data[['title', 'company', 'salary', 'location', 'remote_work_model']].copy()
         self.model_dataset = self.model_dataset.dropna()
+
+        # Enhanced title features
+        self.model_dataset['is_senior'] = self.model_dataset['title'].str.lower().str.contains(
+            'senior|sr\.|sr|staff|principal')
+        self.model_dataset['is_lead'] = self.model_dataset['title'].str.lower().str.contains(
+            'vice|lead|manager|head|director|chief')
+        self.model_dataset['is_junior'] = self.model_dataset['title'].str.lower().str.contains(
+            'junior|jr\.|jr|entry|associate')
+        self.model_dataset['is_fullstack'] = self.model_dataset['title'].str.lower().str.contains(
+            'full.?stack|full.?end')
+        self.model_dataset['is_frontend'] = self.model_dataset['title'].str.lower().str.contains(
+            'front.?end|react|angular|vue|ui|web')
+        self.model_dataset['is_backend'] = self.model_dataset['title'].str.lower().str.contains(
+            'back.?end|api|golang|java|python')
+        self.model_dataset['is_ml'] = self.model_dataset['title'].str.lower().str.contains(
+            'machine|learning|artificial|ml|ai|data sci')
+        self.model_dataset['is_cloud'] = self.model_dataset['title'].str.lower().str.contains(
+            'sre|cloud|aws|azure|gcp|devops|infrastructure')
+        self.model_dataset['is_mobile'] = self.model_dataset['title'].str.lower().str.contains(
+            'mobile|ios|android|flutter|react native')
+        self.model_dataset['is_embedded'] = self.model_dataset['title'].str.lower().str.contains(
+            'embedded|hardware|firmware|iot')
+        self.model_dataset['is_security'] = self.model_dataset['title'].str.lower().str.contains(
+            'security|crypto|blockchain|security')
+        self.model_dataset['is_data'] = self.model_dataset['title'].str.lower().str.contains(
+            'data|etl|pipeline|hadoop|spark')
+        self.model_dataset['is_game'] = self.model_dataset['title'].str.lower().str.contains(
+            'game|unity|unreal|gaming')
+
+        # Remote work feature
+        self.model_dataset['is_remote'] = self.model_dataset['location'].str.lower().str.contains('remote',na=False)
+
+        # Tech hub locations
+        tech_hubs = {
+            'tier_1': ['san francisco', 'san jose', 'seattle', 'new york', 'boston'],
+            'tier_2': ['austin', 'denver', 'chicago', 'los angeles', 'san diego', 'portland', 'atlanta'],
+        }
+
+        self.model_dataset['is_tier1_hub'] = self.model_dataset['location'].str.lower().apply(
+            lambda x: any(hub in x for hub in tech_hubs['tier_1'])
+        )
+        self.model_dataset['is_tier2_hub'] = self.model_dataset['location'].str.lower().apply(
+            lambda x: any(hub in x for hub in tech_hubs['tier_2'])
+        )
 
         processed_salaries = []
 
@@ -66,10 +109,33 @@ class Main:
         # Generate embeddings for the combined text
         combined_embeddings = transformer_model.encode(self.model_dataset['Combined'].tolist())
 
+        # Add all the boolean features
+        title_location_features = np.column_stack([
+            self.model_dataset['is_senior'],
+            self.model_dataset['is_lead'],
+            self.model_dataset['is_junior'],
+            self.model_dataset['is_fullstack'],
+            self.model_dataset['is_frontend'],
+            self.model_dataset['is_backend'],
+            self.model_dataset['is_ml'],
+            self.model_dataset['is_cloud'],
+            self.model_dataset['is_mobile'],
+            self.model_dataset['is_embedded'],
+            self.model_dataset['is_security'],
+            self.model_dataset['is_data'],
+            self.model_dataset['is_game'],
+            self.model_dataset['is_tier1_hub'],
+            self.model_dataset['is_tier2_hub'],
+            self.model_dataset['is_remote']
+        ])
+
+        # Combine embeddings with title and location features
+        X = np.hstack([combined_embeddings, title_location_features])
+
         # Get the processed salaries as the target variable
         y = self.model_dataset['processed_salary'].values
 
-        return combined_embeddings, y
+        return X, y
 
     def train_model(self, X, y, n_splits=5):
         """Train and evaluate the model using K-Fold cross-validation."""
@@ -81,14 +147,14 @@ class Main:
 
         # Define the model
         xgb_model = XGBRegressor(
-            n_estimators=500,
-            learning_rate=0.03,  # Increased from 0.01
-            max_depth=10,
+            n_estimators=750,
+            learning_rate=0.01,
+            max_depth=12,
             min_child_weight=4,
-            reg_alpha=0.5,
-            reg_lambda=1.0,
-            subsample=0.8,  # Increased from 0.7
-            colsample_bytree=0.8,  # Increased from 0.7
+            # reg_alpha=0.5,
+            # reg_lambda=1.0,
+            subsample=0.7,
+            colsample_bytree=0.7,
             random_state=42
         )
 
