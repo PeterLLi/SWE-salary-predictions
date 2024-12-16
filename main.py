@@ -235,7 +235,26 @@ class Main:
         return X, y
 
     def load_model(self):
-        """Check if a saved model exists and load it."""
+        """
+        Check if a saved model exists and load it.
+
+        This method checks if the model file (`self.model_file`) exists in the
+        file system. If the file is found, it loads the trained XGBoost model
+        using `joblib` and assigns it to the `self.xgb_model` attribute.
+
+        Returns:
+        -------
+        bool
+            - `True` if the model was successfully loaded from the file.
+            - `False` if no model file was found.
+
+        Example:
+        --------
+        if main.load_model():
+            print("Model successfully loaded.")
+        else:
+            print("No saved model found. Training a new model...")
+        """
         if os.path.exists(self.model_file):
             print("Loading saved model...")
             self.xgb_model = joblib.load(self.model_file)
@@ -245,6 +264,19 @@ class Main:
     def save_model(self):
         """
         Save the trained model to a file for future use.
+
+        This method saves the trained XGBoost model (`self.xgb_model`) to the
+        specified file path (`self.model_file`) using `joblib`. This allows
+        the model to be reused without retraining.
+
+        Returns:
+        -------
+        None
+
+        Example:
+        --------
+        main.save_model()
+        print("Model has been saved successfully.")
         """
         print("Saving model...")
         joblib.dump(self.xgb_model, self.model_file)
