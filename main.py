@@ -246,7 +246,7 @@ class Main:
         plt.scatter(range(len(self.model_dataset['processed_salary'])), self.model_dataset['processed_salary'],
                     alpha=0.5)
 
-        plt.title('Software Engineer Salaries (Sorted)')
+        plt.title('Software Engineer Salaries')
         plt.xlabel('Rank')
         plt.ylabel('Salary ($)')
         plt.show()
