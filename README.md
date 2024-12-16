@@ -52,6 +52,7 @@ This project predicts software engineer salaries using a machine learning model.
      - Preprocess the data.
      - Train the model.
      - Evaluate the model.
+     - Output a .plk file containing the model
      - Output two graphs and performance metrics to the console.
 
 ## Notes
