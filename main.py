@@ -32,8 +32,10 @@ class Main:
     def preprocessing(self):
         """Preprocess the salary data by selecting key features and standardizing salaries."""
         # Filter rows where the 'types' column contains "full" (case insensitive)
-        filtered_data = self.salary_data[self.salary_data['types'].str.contains(r'full', flags=re.IGNORECASE, na=False, regex=True)]
-
+        # filtered_data = self.salary_data[self.salary_data['types'].str.contains(r'full-time', flags=re.IGNORECASE, na=False, regex=True)]
+        filtered_data = self.salary_data[
+            self.salary_data['types'].str.match(r'^\s*full-time\s*$', flags=re.IGNORECASE, na=False)
+        ]
         # Create a subset of the filtered data with selected columns and drop rows with missing values
         self.model_dataset = filtered_data[['title', 'company', 'salary', 'location']].copy()
         self.model_dataset = self.model_dataset.dropna()
