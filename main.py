@@ -485,7 +485,7 @@ class Main:
         is_cloud = bool(re.search(r'sre|cloud|aws|azure|gcp|devops|infrastructure', entry['title'].lower()))
         is_mobile = bool(re.search(r'mobile|ios|android|flutter|react', entry['title'].lower()))
         is_embedded = bool(re.search(r'embedded|hardware|firmware|iot', entry['title'].lower()))
-        is_security = bool(re.search(r'security|crypto|blockchain|security', entry['title'].lower()))
+        is_security = bool(re.search(r'crypto|blockchain|security', entry['title'].lower()))
         is_data = bool(re.search(r'data|etl|pipeline|hadoop|spark', entry['title'].lower()))
         is_game = bool(re.search(r'game|unity|unreal|gaming', entry['title'].lower()))
 
@@ -523,7 +523,8 @@ class Main:
 
         return predicted_salary[0]
 
-    def get_user_input(self):
+    @staticmethod
+    def get_user_input():
         """
         Interactive prompt for predicting salaries based on user input.
 
