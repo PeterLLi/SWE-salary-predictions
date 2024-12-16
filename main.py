@@ -7,22 +7,25 @@ import seaborn as sns
 from sentence_transformers import SentenceTransformer
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score
+import os
+import joblib
 
 
 class Main:
     def __init__(self):
         self.model_dataset = None
         self.salary_data = pd.read_csv("us-software-engineer-jobs-zenrows.csv")
+        self.model_file = "xgb_model.pkl"  # File to save the trained model
         self.xgb_model = XGBRegressor(
-            n_estimators=1000, # number of boosting rounds
-            learning_rate=0.005, # shrinkage to balance training speed and performance
-            max_depth=12, # maximum tree depth to model complexity
-            min_child_weight=4, # minimum sum of weights in a child to avoid overfitting
-            reg_alpha=1.0, # L1 regularization for sparsity and smoothness
-            reg_lambda=0.5, # L2 regularization for sparsity and smoothness
-            subsample=0.7, # percentage of samples used for training each tree
-            colsample_bytree=0.7, # percentage of features used for each tree
-            random_state=42 # ensures reproducibility
+            n_estimators=1000,  # number of boosting rounds
+            learning_rate=0.005,  # shrinkage to balance training speed and performance
+            max_depth=12,  # maximum tree depth to model complexity
+            min_child_weight=4,  # minimum sum of weights in a child to avoid overfitting
+            reg_alpha=1.0,  # L1 regularization for sparsity and smoothness
+            reg_lambda=0.5,  # L2 regularization for sparsity and smoothness
+            subsample=0.7,  # percentage of samples used for training each tree
+            colsample_bytree=0.7,  # percentage of features used for each tree
+            random_state=42  # ensures reproducibility
         )
         self.mse_scores = []
         self.r2_scores = []
@@ -40,7 +43,8 @@ class Main:
         self.model_dataset = filtered_data[['title', 'company', 'salary', 'location']].copy()
         self.model_dataset = self.model_dataset.dropna()
 
-        print(f"Number of entries after feature selection and dropping nulls: {len(self.model_dataset)}")
+        # Optional: Print the number of rows in the final dataset
+        print(len(self.model_dataset))
 
         # Enhanced title features
         self.model_dataset['is_senior'] = self.model_dataset['title'].str.lower().str.contains(
@@ -169,8 +173,26 @@ class Main:
 
         return X, y
 
+    def load_model(self):
+        """Load the model if it exists."""
+        if os.path.exists(self.model_file):
+            print("Loading saved model...")
+            self.xgb_model = joblib.load(self.model_file)
+            return True
+        return False
+
+    def save_model(self):
+        """Save the trained model."""
+        print("Saving model...")
+        joblib.dump(self.xgb_model, self.model_file)
+
     def train_model(self, X, y, n_splits=5):
         """Train and evaluate the model using K-Fold cross-validation and holdout test set."""
+        # Check if a saved model exists
+        if self.load_model():
+            print("Model loaded. Skipping training...")
+            return self.xgb_model, self.last_y_test, self.last_y_pred
+
         # First split into training and test sets
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -223,6 +245,12 @@ class Main:
         print(f"MSE on test set: {test_mse:.2f}")
         print(f"R² on test set: {test_r2:.3f}")
 
+        # Save the trained model
+        self.save_model()
+
+        # Visualize results
+        self.visualize_predictions()
+
         return self.xgb_model, self.last_y_test, self.last_y_pred
 
     def analyze_data(self):
@@ -270,6 +298,62 @@ class Main:
         plt.grid(True, alpha=0.3)
         plt.show()
 
+    def predict_single_entry(self, entry):
+        """Predict salary for a single data entry."""
+        # Generate boolean features
+        is_senior = bool(re.search(r'senior|sr\.?|staff|principal|lead|architect', entry['title'].lower()))
+        is_lead = bool(re.search(r'vice|manager|head|director|chief', entry['title'].lower()))
+        is_mid = bool(
+            re.search(r'(?:\s|^)iii\b|(?:\s|^)iv\b|level\s*[345]|software engineer\s*[345]|\s+3\b|\s+4\b|\s+5\b',
+                      entry['title'].lower()))
+        is_junior = bool(re.search(
+            r'junior|jr\.?|entry|associate|(?:\s|^)i\b|(?:\s|^)ii\b|level\s*[12]|software engineer\s*[12]|\s+1\b|\s+2\b',
+            entry['title'].lower()))
+        is_fullstack = bool(re.search(r'full.?stack|full.?end', entry['title'].lower()))
+        is_frontend = bool(re.search(r'front.?end|react|angular|vue|ui|web', entry['title'].lower()))
+        is_backend = bool(re.search(r'back.?end|api|golang|java|python', entry['title'].lower()))
+        is_ml = bool(re.search(r'machine|learning|artificial|ml|ai|data', entry['title'].lower()))
+        is_cloud = bool(re.search(r'sre|cloud|aws|azure|gcp|devops|infrastructure', entry['title'].lower()))
+        is_mobile = bool(re.search(r'mobile|ios|android|flutter|react', entry['title'].lower()))
+        is_embedded = bool(re.search(r'embedded|hardware|firmware|iot', entry['title'].lower()))
+        is_security = bool(re.search(r'security|crypto|blockchain|security', entry['title'].lower()))
+        is_data = bool(re.search(r'data|etl|pipeline|hadoop|spark', entry['title'].lower()))
+        is_game = bool(re.search(r'game|unity|unreal|gaming', entry['title'].lower()))
+
+        # Remote work feature
+        is_remote = 'remote' in entry['location'].lower()
+
+        # Tech hub locations
+        tech_hubs = {
+            'tier_1': ['san francisco', 'san jose', 'seattle', 'new york', 'boston'],
+            'tier_2': ['austin', 'denver', 'chicago', 'los angeles', 'san diego', 'portland', 'atlanta'],
+        }
+
+        is_tier1_hub = any(hub in entry['location'].lower() for hub in tech_hubs['tier_1'])
+        is_tier2_hub = any(hub in entry['location'].lower() for hub in tech_hubs['tier_2'])
+
+        # Combine text fields into a single string
+        combined_text = f"{entry['company']} {entry['title']} {entry['location']}"
+
+        # Generate embedding for the combined text
+        transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
+        combined_embedding = transformer_model.encode([combined_text])  # Shape: (1, 384)
+
+        # Combine all boolean features into an array
+        title_location_features = np.array([
+            is_senior, is_lead, is_mid, is_junior, is_fullstack, is_frontend, is_backend,
+            is_ml, is_cloud, is_mobile, is_embedded, is_security, is_data, is_game,
+            is_tier1_hub, is_tier2_hub, is_remote
+        ]).reshape(1, -1)  # Shape: (1, 17)
+
+        # Combine embeddings with boolean features
+        features = np.hstack([combined_embedding, title_location_features])  # Shape: (1, 401)
+
+        # Predict using the trained XGBoost model
+        predicted_salary = self.xgb_model.predict(features)
+
+        return predicted_salary[0]
+
 
 if __name__ == '__main__':
     main = Main()
@@ -277,4 +361,14 @@ if __name__ == '__main__':
     main.visualization()
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
-    main.visualize_predictions()
+
+    # Create a sample entry for prediction
+    sample_entry = {
+        'title': input('Enter a job title: '),
+        'company': input('Enter a company: '),
+        'location': input('Enter a location: '),
+    }
+
+    # Predict salary
+    predicted_salary = main.predict_single_entry(sample_entry)
+    print(f"Predicted Salary: ${predicted_salary:,.2f}")
