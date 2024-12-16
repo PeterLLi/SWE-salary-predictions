@@ -14,15 +14,15 @@ class Main:
         self.model_dataset = None
         self.salary_data = pd.read_csv("us-software-engineer-jobs-zenrows.csv")
         self.xgb_model = XGBRegressor(
-            n_estimators=1000,
-            learning_rate=0.005,
-            max_depth=12,
-            min_child_weight=4,
-            reg_alpha=1.0,
-            reg_lambda=0.5,
-            subsample=0.7,
-            colsample_bytree=0.7,
-            random_state=42
+            n_estimators=1000, # number of boosting rounds
+            learning_rate=0.005, # shrinkage to balance training speed and performance
+            max_depth=12, # maximum tree depth to model complexity
+            min_child_weight=4, # minimum sum of weights in a child to avoid overfitting
+            reg_alpha=1.0, # L1 regularization for sparsity and smoothness
+            reg_lambda=0.5, # L2 regularization for sparsity and smoothness
+            subsample=0.7, # percentage of samples used for training each tree
+            colsample_bytree=0.7, # percentage of features used for each tree
+            random_state=42 # ensures reproducibility
         )
         self.mse_scores = []
         self.r2_scores = []
@@ -116,7 +116,7 @@ class Main:
 
             # processed_salaries.append(final_number)
             min_salary = 30000  # $30k minimum
-            max_salary = 300000  # $500k maximum
+            max_salary = 300000  # $300k maximum
             if min_salary <= final_number <= max_salary:
                 processed_salaries.append(final_number)
             else:
