@@ -270,11 +270,11 @@ class Main:
     def visualization(self):
         sns.set_theme()
         plt.figure(figsize=(10, 6))
-
-        plt.scatter(range(len(self.model_dataset['processed_salary'])), self.model_dataset['processed_salary'],
+        sorted_salaries = sorted(self.model_dataset['processed_salary'])
+        plt.scatter(range(len(sorted_salaries)), sorted_salaries,
                     alpha=0.5)
 
-        plt.title('Software Engineer Salaries')
+        plt.title('Software Engineer Salaries (sorted)')
         plt.xlabel('Rank')
         plt.ylabel('Salary ($)')
         plt.show()
