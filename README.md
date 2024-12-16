@@ -32,7 +32,22 @@ This project predicts software engineer salaries using a machine learning model.
      python main.py
      ```
 
-3. **Outputs**
+3. **Inputting an Entry**
+   - After running the script, you will be prompted to input job details for salary prediction.
+   - Enter the following details when prompted:
+     - **Job Title**: Provide the job title, e.g., `Senior Software Engineer`.
+     - **Company**: Enter the company name, e.g., `Google`.
+     - **Location**: Specify the location, e.g., `San Francisco`.
+   - Example interaction:
+     ```
+     Enter a job title: Senior Software Engineer
+     Enter a company: Google
+     Enter a location: San Francisco
+     Predicted Salary: $150,000.00
+     ```
+   - To input another position, type `YES` when prompted, or type `no` to exit.
+
+4. **Outputs**
    - The script will:
      - Preprocess the data.
      - Train the model.
