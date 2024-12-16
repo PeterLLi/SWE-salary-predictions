@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import re
@@ -7,7 +8,6 @@ import seaborn as sns
 from sentence_transformers import SentenceTransformer
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score
-import os
 import joblib
 
 
@@ -354,6 +354,43 @@ class Main:
 
         return predicted_salary[0]
 
+    def get_user_input(self):
+        """
+        Continuously prompts the user to input job details for salary prediction.
+        Exits when the user types 'exit' or 'quit'.
+        """
+        while True:
+            print("\n--- Enter Job Details ---")
+
+            # Get user input with validation
+            title = input("Enter a job title (or type 'exit' to quit): ").strip()
+            if title.lower() in {'exit', 'quit'}:
+                print("Exiting... Goodbye!")
+                break
+
+            company = input("Enter a company: ").strip()
+            location = input("Enter a location: ").strip()
+
+            # Create a sample entry for prediction
+            sample_entry = {
+                'title': title,
+                'company': company,
+                'location': location,
+            }
+
+            # Predict salary
+            try:
+                predicted_salary = main.predict_single_entry(sample_entry)
+                print(f"\nPredicted Salary: ${predicted_salary:,.2f}")
+            except Exception as e:
+                print(f"Error in prediction: {e}")
+
+            # Ask user if they want to enter another position
+            again = input("\nDo you want to predict another salary? (yes/no): ").strip().lower()
+            if again not in {'yes', 'y'}:
+                print("Exiting... Goodbye!")
+                break
+
 
 if __name__ == '__main__':
     main = Main()
@@ -362,13 +399,4 @@ if __name__ == '__main__':
     X, y = main.data_embedding()
     model, y_test, y_pred = main.train_model(X, y)
 
-    # Create a sample entry for prediction
-    sample_entry = {
-        'title': input('Enter a job title: '),
-        'company': input('Enter a company: '),
-        'location': input('Enter a location: '),
-    }
-
-    # Predict salary
-    predicted_salary = main.predict_single_entry(sample_entry)
-    print(f"Predicted Salary: ${predicted_salary:,.2f}")
+    main.get_user_input()
