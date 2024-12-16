@@ -40,8 +40,7 @@ class Main:
         self.model_dataset = filtered_data[['title', 'company', 'salary', 'location']].copy()
         self.model_dataset = self.model_dataset.dropna()
 
-        # Optional: Print the number of rows in the final dataset
-        print(len(self.model_dataset))
+        print(f"Rows after feature selection and dropping nulls: {len(self.model_dataset)}")
 
         # Enhanced title features
         self.model_dataset['is_senior'] = self.model_dataset['title'].str.lower().str.contains(
