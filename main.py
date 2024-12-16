@@ -33,8 +33,53 @@ class Main:
         self.last_y_pred = None
 
     def preprocessing(self):
-        """Preprocess the salary data by selecting key features and standardizing salaries."""
-        # Filter rows where the 'types' column contains "full" (case insensitive)
+        """
+        Preprocess the salary data to clean and standardize it.
+
+        This method performs the following steps:
+        1. Filters for full-time job entries from the dataset.
+        2. Selects key features: 'title', 'company', 'salary', and 'location'.
+        3. Applies feature engineering to create boolean flags for job seniority,
+           specialties, and geographic markers (e.g., remote work, tech hubs).
+        4. Extracts and normalizes salary information, converting hourly, weekly,
+           or monthly rates to annual salaries.
+        5. Removes entries with missing or unrealistic salary values (e.g., below
+           $30,000 or above $300,000).
+
+        Processed Features:
+        -------------------
+        - `is_senior`: Indicates if the job title corresponds to a senior-level position.
+        - `is_lead`: Indicates if the job title corresponds to a leadership role.
+        - `is_mid`: Indicates if the job is mid-level.
+        - `is_junior`: Indicates if the job is junior-level or entry-level.
+        - `is_fullstack`: Indicates if the job involves full-stack development.
+        - `is_frontend`: Indicates if the job focuses on front-end development.
+        - `is_backend`: Indicates if the job focuses on back-end development.
+        - `is_ml`: Indicates if the job is related to machine learning or AI.
+        - `is_cloud`: Indicates if the job involves cloud or DevOps roles.
+        - `is_mobile`: Indicates if the job involves mobile application development.
+        - `is_embedded`: Indicates if the job involves embedded systems or IoT.
+        - `is_security`: Indicates if the job involves cybersecurity or blockchain.
+        - `is_data`: Indicates if the job involves data engineering or analysis.
+        - `is_game`: Indicates if the job involves game development.
+        - `is_remote`: Indicates if the job is remote.
+        - `is_tier1_hub`: Indicates if the job is located in a Tier 1 tech hub
+          (e.g., San Francisco, New York).
+        - `is_tier2_hub`: Indicates if the job is located in a Tier 2 tech hub
+          (e.g., Austin, Denver).
+
+        Returns:
+        -------
+        pandas.DataFrame
+            A cleaned and preprocessed DataFrame containing the selected features
+            and processed salary information.
+
+        Example:
+        --------
+        model_dataset = main.preprocessing()
+        print(f"Processed dataset contains {len(model_dataset)} entries.")
+        """
+        # Filter rows where the 'types' column contains "full" (case-insensitive)
         # filtered_data = self.salary_data[self.salary_data['types'].str.contains(r'full-time', flags=re.IGNORECASE, na=False, regex=True)]
         filtered_data = self.salary_data[
             self.salary_data['types'].str.match(r'^\s*full-time\s*$', flags=re.IGNORECASE, na=False)
@@ -130,7 +175,24 @@ class Main:
         return self.model_dataset
 
     def data_embedding(self):
-        """Generate unified embeddings for all text-based features."""
+        """
+        Generate unified embeddings for text features using SentenceTransformer.
+        Combines embeddings with engineered boolean features for model input.
+
+        Returns:
+        -------
+        X : numpy.ndarray
+            The feature matrix with shape (n_samples, n_features), where:
+            - `n_samples` is the number of entries in the dataset.
+            - `n_features` is the number of combined features, including:
+                - Text embeddings from SentenceTransformer.
+                - Boolean features indicating job-level details, specialties,
+                  and geographic markers.
+
+        y : numpy.ndarray
+            The target variable with shape (n_samples,), containing the processed
+            salary values for each job entry.
+        """
         transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
 
         # Combine text fields into a single string
@@ -173,7 +235,7 @@ class Main:
         return X, y
 
     def load_model(self):
-        """Load the model if it exists."""
+        """Check if a saved model exists and load it."""
         if os.path.exists(self.model_file):
             print("Loading saved model...")
             self.xgb_model = joblib.load(self.model_file)
@@ -181,12 +243,42 @@ class Main:
         return False
 
     def save_model(self):
-        """Save the trained model."""
+        """
+        Save the trained model to a file for future use.
+        """
         print("Saving model...")
         joblib.dump(self.xgb_model, self.model_file)
 
     def train_model(self, X, y, n_splits=5):
-        """Train and evaluate the model using K-Fold cross-validation and holdout test set."""
+        """
+        Train the XGBoost model using K-Fold cross-validation.
+        Evaluates performance on a holdout test set.
+
+        Parameters:
+        ----------
+        X : numpy.ndarray or pandas.DataFrame
+            Feature matrix with shape (n_samples, n_features), where each row
+            represents a job entry and each column corresponds to a feature.
+
+        y : numpy.ndarray or pandas.Series
+            Target variable (processed salary values) with shape (n_samples,).
+
+        n_splits : int, optional, default=5
+            Number of folds for K-Fold cross-validation. Determines how
+            training data is split into training and validation sets.
+
+        Returns:
+        -------
+        xgb_model : XGBRegressor
+            The trained XGBoost model instance, which can be used for further predictions.
+
+        last_y_test : numpy.ndarray
+            Actual salary values from the validation or test set in the last fold
+            or the holdout test set.
+
+        last_y_pred : numpy.ndarray
+            Predicted salary values corresponding to `last_y_test`.
+        """
         # Check if a saved model exists
         if self.load_model():
             print("Model loaded. Skipping training...")
@@ -252,21 +344,21 @@ class Main:
 
         return self.xgb_model, self.last_y_test, self.last_y_pred
 
-    def analyze_data(self):
-        """Analyze the processed salary data."""
-        processed_data = self.preprocessing()
-
-        salary_analysis = {
-            'average_salary': processed_data['processed_salary'].mean(),
-            'median_salary': processed_data['processed_salary'].median(),
-            'min_salary': processed_data['processed_salary'].min(),
-            'max_salary': processed_data['processed_salary'].max(),
-            'total_positions': len(processed_data),
-        }
-
-        return salary_analysis
-
     def visualization(self):
+        """
+        Visualize the processed salary data distribution.
+
+        This method creates a scatterplot of sorted salary data to provide an
+        overview of the salary distribution across all job entries in the dataset.
+
+        The x-axis represents the rank of salaries (sorted in ascending order),
+        and the y-axis represents the corresponding salary values.
+
+        Returns:
+        -------
+        None
+            The function does not return any value. It displays the scatterplot.
+        """
         sns.set_theme()
         plt.figure(figsize=(10, 6))
         sorted_salaries = sorted(self.model_dataset['processed_salary'])
@@ -279,7 +371,24 @@ class Main:
         plt.show()
 
     def visualize_predictions(self):
-        """Visualize model predictions vs actual values."""
+        """
+        Visualize the relationship between predicted and actual salary values.
+
+        This method generates a scatterplot comparing the model's predicted
+        salaries against the actual salaries from the validation or test set.
+
+        Features of the visualization:
+        - Scatterplot of actual vs. predicted values.
+        - A dashed red line ("Perfect Prediction") represents the ideal case
+          where predicted values exactly match actual values.
+        - Provides insights into the model's performance, including potential
+          over- or under-predictions.
+
+        Returns:
+        -------
+        None
+            The function does not return any value. It displays the scatterplot.
+        """
         plt.figure(figsize=(10, 6))
 
         # Create a scatter plot of actual vs predicted values
@@ -298,7 +407,36 @@ class Main:
         plt.show()
 
     def predict_single_entry(self, entry):
-        """Predict salary for a single data entry."""
+        """
+        Predict the salary for a single job entry.
+
+        This method processes a single job entry by extracting relevant features,
+        generating text embeddings, and combining them with boolean indicators to
+        predict the salary using the trained XGBoost model.
+
+        Parameters:
+        ----------
+        entry : dict
+            A dictionary containing the job details with the following keys:
+            - 'title': The job title (e.g., "Senior Software Engineer").
+            - 'company': The company offering the position (e.g., "Google").
+            - 'location': The job location (e.g., "San Francisco, CA" or "Remote").
+
+        Returns:
+        -------
+        float
+            The predicted salary for the given job entry.
+
+        Example:
+        --------
+        sample_entry = {
+            'title': 'Data Scientist',
+            'company': 'Meta',
+            'location': 'Seattle, WA'
+        }
+        predicted_salary = main.predict_single_entry(sample_entry)
+        print(f"Predicted Salary: ${predicted_salary:,.2f}")
+        """
         # Generate boolean features
         is_senior = bool(re.search(r'senior|sr\.?|staff|principal|lead|architect', entry['title'].lower()))
         is_lead = bool(re.search(r'vice|manager|head|director|chief', entry['title'].lower()))
@@ -355,8 +493,31 @@ class Main:
 
     def get_user_input(self):
         """
-        Continuously prompts the user to input job details for salary prediction.
-        Exits when the user types 'exit' or 'quit'.
+        Interactive prompt for predicting salaries based on user input.
+
+        This method allows the user to input job details (title, company, location)
+        to predict the salary for a given position. The user can enter multiple
+        entries and exit the loop by typing 'exit' or 'quit'.
+
+        Workflow:
+        ---------
+        1. Prompt the user for job title, company, and location.
+        2. Use `predict_single_entry()` to compute the predicted salary.
+        3. Display the predicted salary.
+        4. Continue until the user decides to quit.
+
+        Returns:
+        -------
+        None
+            This method does not return any value. It runs an interactive loop
+            for salary predictions.
+
+        Example:
+        --------
+        >> Enter a job title (or type 'exit' to quit): Software Engineer
+        >> Enter a company: Microsoft
+        >> Enter a location: Remote
+        Predicted Salary: $120,000.00
         """
         while True:
             print("\n--- Enter Job Details ---")
