@@ -399,3 +399,4 @@ if __name__ == '__main__':
     model, y_test, y_pred = main.train_model(X, y)
 
     main.get_user_input()
+
