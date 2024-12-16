@@ -10,7 +10,7 @@ This project predicts software engineer salaries using a machine learning model.
 - Upon running the code, you will be prompted to install the libraries listed in the requirements file.
 
 ### Python Version
-- **Python 3.11** is required as it supports the necessary version of PyTorch used by SentenceTransformer.
+- **Python 3.11.11** is required as it supports the necessary version of PyTorch used by SentenceTransformer.
 
 ### Dataset
 - The dataset must be placed in the same directory as `main.py`.
@@ -23,7 +23,7 @@ This project predicts software engineer salaries using a machine learning model.
      ```bash
      pip install -r requirements.txt
      ```
-   - Confirm that Python 3.11 is installed on your system.
+   - Confirm that Python 3.11.11 is installed on your system.
    - Verify that the dataset file is correctly named and located in the appropriate directory.
 
 2. **Execution**
