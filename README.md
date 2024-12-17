@@ -62,7 +62,6 @@ This project predicts software engineer salaries using a machine learning model.
 - The entire project codebase is contained within `main.py`.
 - Our submission on Canvas provides a .pkl file generated on our computers. This is so that run times will be within a reasonable time frame.
    - If you would like to view all the generated graphs, please run main.py without the .pkl file in the directory.
-   - If you prefer run time and would prefer to just test the "entry input", please include our provided .pkl file in the same directory as main.py.
-   - We highly recommend utilizing our provided .pkl file as this will drastically cut down the run time of the Python file.
-      - Note that run times will still vary a bit depending on hardware specification with the provided .pkl file.
+   - If you prefer run time and would prefer to just test the "entry input", please include our provided .pkl file in the same directory as main.py. We highly recommend utilizing our provided .pkl file.
+      - Note: Even if main.py is run with the .pkl file, run times will still vary a bit depending on hardware specifications.
 
