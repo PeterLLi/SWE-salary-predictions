@@ -32,7 +32,7 @@ This project predicts software engineer salaries using a machine learning model.
      python main.py
      ```
      OR
-- Open the file in PyCharm and execute the file. If you are running this through PyCharm and have created a virtual environment through pyenv, please be sure to select your virtual environment as the interpreter in PyCharm to ensure that there are no conflicts.
+   - Open the file in PyCharm and execute the file. If you are running this through PyCharm and have created a virtual environment through pyenv, please be sure to select your virtual environment as the interpreter in PyCharm to ensure that there are no conflicts.
 
 3. **Inputting an Entry**
    - After running the script, you will be prompted to input job details for salary prediction.
