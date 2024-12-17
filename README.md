@@ -23,7 +23,7 @@ This project predicts software engineer salaries using a machine learning model.
      ```bash
      pip install -r requirements.txt
      ```
-   - Confirm that Python 3.11.11 is installed on your system.
+   - Confirm that Python 3.11.11 is installed on your system. We recommend creating a virtual environment through pyenv with this Python version.
    - Verify that the dataset file is correctly named and located in the appropriate directory.
 
 2. **Execution**
@@ -31,6 +31,8 @@ This project predicts software engineer salaries using a machine learning model.
      ```bash
      python main.py
      ```
+     OR
+- Open the file in PyCharm and execute the file. If you are running this through PyCharm and have created a virtual environment through pyenv, please be sure to select your virtual environment as the interpreter in PyCharm to ensure that there are no conflicts.
 
 3. **Inputting an Entry**
    - After running the script, you will be prompted to input job details for salary prediction.
@@ -52,9 +54,10 @@ This project predicts software engineer salaries using a machine learning model.
      - Preprocess the data.
      - Train the model.
      - Evaluate the model.
-     - Output a .plk file containing the model
+     - Output a .pkl file containing the model
      - Output two graphs and performance metrics to the console.
 
 ## Notes
 - The entire project codebase is contained within `main.py`.
+- Our submission provides a generated .pkl file. This is so that run times are within a reasonable time frame. To view all the generated graphs, please run main.py without the .pkl file in the directory.
 
